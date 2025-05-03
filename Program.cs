@@ -6,17 +6,20 @@ namespace TimeShiftLoggerExample
 {
     internal class Program
     {
+#pragma warning disable IDE0060 // 未使用のパラメーターを削除します
         static void Main(string[] args)
+#pragma warning restore IDE0060 // 未使用のパラメーターを削除します
         {
             // Configure Serilog
             Log.Logger = new LoggerConfiguration()
                 .WriteTo.Console()
-                .WriteTo.File(new JsonFormatter() ,"Logs/app.json", rollingInterval: RollingInterval.Day, buffered:false)
+                .WriteTo.File(new JsonFormatter(), "Logs/app.json", rollingInterval: RollingInterval.Day, buffered: false)
                 .CreateLogger();
 
             using var loggerFactory = LoggerFactory.Create(builder =>
             {
-                builder.AddSerilog(); // Use Serilog for logging
+                builder.AddSerilog(); // Use Serilog for general logging
+                builder.AddProvider(new BufferedLoggingProvider("Logs/buffered.log")).SetMinimumLevel(LogLevel.Debug); // Add custom buffered logging provider
             });
             var logger = loggerFactory.CreateLogger<Program>();
 

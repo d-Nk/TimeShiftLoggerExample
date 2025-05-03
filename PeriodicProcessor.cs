@@ -3,34 +3,30 @@ using System;
 
 namespace TimeShiftLoggerExample
 {
-    internal partial class PeriodicProcessor
+    internal partial class PeriodicProcessor(ILoggerFactory loggerFactory)
     {
-        private readonly ILogger<PeriodicProcessor> _logger;
+        private readonly ILogger<PeriodicProcessor> _logger = loggerFactory.CreateLogger<PeriodicProcessor>();
 
-        public PeriodicProcessor(ILoggerFactory loggerFactory)
-        {
-            _logger = loggerFactory.CreateLogger<PeriodicProcessor>();
-        }
-
+#pragma warning disable IDE0060 // 未使用のパラメーターを削除します
         public void Execute(object? state)
+#pragma warning restore IDE0060 // 未使用のパラメーターを削除します
         {
             var currentTime = DateTime.Now;
 
-            try
+            using (_logger.BeginScope(currentTime.ToString("yyyy_MM_dd_HH_mm_ss_FFF")))
             {
-                // Create a logging scope with the current time
-                using (_logger.BeginScope("Execution at {Time}", currentTime))
+                try
                 {
                     int a = GenerateRandomNumber(10);
                     int b = GenerateRandomNumber(3);
                     double result = DivideNumbers(a, b);
                     LogExecutionResult(_logger, a, b, result);
                 }
-            }
-            catch (Exception ex)
-            {
-                // Log any exception as an error
-                LogExecutionError(_logger, ex);
+                catch (Exception ex)
+                {
+                    // Log any exception as an error
+                    LogExecutionError(_logger, ex);
+                }
             }
         }
 
@@ -45,7 +41,7 @@ namespace TimeShiftLoggerExample
             return value;
         }
 
-        private double DivideNumbers(int a, int b)
+        private static double DivideNumbers(int a, int b)
         {
             if (b == 0)
             {
