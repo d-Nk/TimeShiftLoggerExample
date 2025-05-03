@@ -1,8 +1,6 @@
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
+
 
 namespace TimeShiftLoggerExample
 {
@@ -26,7 +24,16 @@ namespace TimeShiftLoggerExample
     {
         public IDisposable BeginScope<TState>(TState state) where TState : notnull
         {
-            return new LoggingScope(bufferedLogFilePath, state.ToString());
+            var scope = LoggingScope.CurrentScope.Value;
+            if(scope != null)
+            {
+                return scope.PushScope(state);
+            }
+            else
+            {
+                // トップレベルのスコープを追加
+                return new LoggingScope(bufferedLogFilePath, state.ToString());
+            }
         }
 
         public bool IsEnabled(LogLevel logLevel)
@@ -41,9 +48,11 @@ namespace TimeShiftLoggerExample
 
             if (scope != null)
             {
+                // スコープにプッシュしておく
                 scope.AddLog($"[{logLevel}] {categoryName}: {message}");
                 if (exception != null)
                 {
+                    // 例外が発生した場合は、スコープにマークしておく
                     scope.MarkExceptionOccurred();
                 }
             }
@@ -54,6 +63,7 @@ namespace TimeShiftLoggerExample
             private readonly string _bufferedLogFilePath;
             private readonly List<string> _logBuffer = [];
             private bool _hasException = false;
+            private readonly List<object> scopes = [];
             public static AsyncLocal<LoggingScope?> CurrentScope { get; } = new();
 
             public LoggingScope(string bufferedLogFilePath, string? scopeName)
@@ -76,9 +86,26 @@ namespace TimeShiftLoggerExample
             {
                 if (_hasException)
                 {
+                    // 例外が発生した場合は、スコープをファイルに書き込む  
                     File.AppendAllLines(_bufferedLogFilePath, _logBuffer);
                 }
                 CurrentScope.Value = null;
+            }
+
+            internal IDisposable PushScope(object scope)
+            {
+                scopes.Add(scope);
+                return new ScopeDisposer(scopes, scope);
+            }
+
+            private class ScopeDisposer(List<object> scopes, object scope) : IDisposable
+            {
+                private readonly List<object> _scopes = scopes;
+
+                public void Dispose()
+                {
+                    _scopes.Remove(scope);
+                }
             }
         }
     }

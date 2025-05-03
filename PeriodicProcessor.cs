@@ -41,13 +41,17 @@ namespace TimeShiftLoggerExample
             return value;
         }
 
-        private static double DivideNumbers(int a, int b)
+        private double DivideNumbers(int a, int b)
         {
-            if (b == 0)
+            using (_logger.BeginScope("a / b"))
             {
-                throw new ApplicationException($"b must not be 0");
+                if (b == 0)
+                {
+                    _logger.LogWarning("HogeHoge");
+                    throw new ApplicationException($"b must not be 0");
+                }
+                return (double)a / b; // Perform division
             }
-            return (double)a / b; // Perform division
         }
 
         [LoggerMessage(EventId = 1, Level = LogLevel.Debug, Message = "Generated random number: {Value} with max: {Max}")]
